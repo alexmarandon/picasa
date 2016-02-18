@@ -5,46 +5,6 @@ import sqlite3
 conn = sqlite3.connect('picasadb.sqlite')
 cur = conn.cursor()
 
-# Make some fresh tables using executescript()
-cur.executescript('''
-DROP TABLE IF EXISTS Albums;
-DROP TABLE IF EXISTS Contacts;
-DROP TABLE IF EXISTS Starred;
-DROP TABLE IF EXISTS Albums_Files;
-DROP TABLE IF EXISTS Faces_Files;
-
-CREATE TABLE Albums (
-    id  TEXT UNIQUE,
-    name   TEXT UNIQUE
-);
-
-CREATE TABLE Contacts (
-    id  TEXT UNIQUE,
-    name   TEXT UNIQUE
-);
-
-
-CREATE TABLE Starred (
-    file  TEXT,
-    folder  TEXT,
-    year  TEXT
-);
-
-CREATE TABLE Albums_Files (
-    file  TEXT,
-    folder  TEXT,
-    year  TEXT ,
-    id  TEXT 
-);
-
-CREATE TABLE Faces_Files (
-    file  TEXT,
-    folder  TEXT,
-    year  TEXT ,
-    id  TEXT 
-);
-''')
-
 
 with open('picasa.ini.json') as data_file:    
     data = json.load(data_file)
@@ -57,7 +17,6 @@ starredfiles = list()
 file_albums = list()
 file_faces = list()
 contacts = list()
-
 for row in data:
 	if re.search('album', row['header'], re.IGNORECASE) and re.search('name', row['action'], re.IGNORECASE): 
 		ID = row['header'].split(':')[1]
@@ -69,19 +28,19 @@ for row in data:
 			album['name'] = name
 			unique_album_ids.append(ID)
 			albums.append(album)
-	
-	elif re.search('Contacts2', row['header'], re.IGNORECASE): 
+		
+	if re.search('Contacts2', row['header'], re.IGNORECASE): 
 		id = row['action'].split('=')[0]
 		name = row['action'].split('=')[1].split(';')[0]
 		#print row['action']
 		if id not in unique_contacts:
-			#print "Contact ID & Name:",id, name
+			print "Contact ID & Name:",id, name
 			contact = dict()
 			contact['id'] = id
 			contact['name'] = name
 			unique_contacts.append(id)
 			contacts.append(contact)
-		
+	
 		
 	elif re.search('jpe*g', row['header'], re.IGNORECASE) and re.search('star=yes', row['action'], re.IGNORECASE):
 		#print "Starred File:", row['year'], row['folder'], row['header']
@@ -101,7 +60,7 @@ for row in data:
 			file_album['year'] = row['year']
 			file_album['id'] = id
 			file_albums.append(file_album)
-
+	
 	elif re.search('jpe*g', row['header'], re.IGNORECASE) and re.search('faces', row['action'], re.IGNORECASE):
 		faces = row['action'].split('=')[1].split(';')
 		#print faces
@@ -112,42 +71,9 @@ for row in data:
 			file_face['folder'] = row['folder']
 			file_face['year'] = row['year']
 			file_face['id'] = face.split(',')[1]
-			file_faces.append(file_face)
-
-print "Inserting Albums..."			
-for i in albums:
-	#print "album:", i['id'], i['name']
-	cur.execute('''INSERT INTO Albums (id, name) 
-		VALUES ( ?, ? )''', (i['id'], i['name'] ) )
-	conn.commit()
-
-print "Inserting Contacts..."	
-for i in contacts:
-	#print "contact:", i['id'], i['name']
-	cur.execute('''INSERT INTO Contacts (id, name) 
-		VALUES ( ?, ? )''', (i['id'], i['name'] ) )
-	conn.commit()
-
-	
-print "Inserting Starred Files..."
-for i in starredfiles:
-	#print "starred:", i['year'], i['folder'], i['file']
-	cur.execute('''INSERT INTO Starred (file, folder, year) 
-		VALUES ( ?, ?, ?)''',( i['file'], i['folder'], i['year'] ) )
-	conn.commit()
-
-print "Inserting Album Content..."
-for i in file_albums:
-	#print "file_album:", i['year'], i['folder'], i['file'], i['id']
-	cur.execute('''INSERT INTO Albums_Files (file, folder, year, id) 
-		VALUES ( ?, ?, ?, ?)''',( i['file'], i['folder'], i['year'] , i['id'] ) )
-	conn.commit()
-
-	
-print "Inserting Face Content..."
-for i in file_faces:
-	#print "file_face:", i['year'], i['folder'], i['file'], i['id']
-	cur.execute('''INSERT INTO Faces_Files (file, folder, year, id) 
-		VALUES ( ?, ?, ?, ?)''',( i['file'], i['folder'], i['year'] , i['id'] ) )
-	conn.commit()
-
+		
+	elif not re.search('backuphash|date|token|redo|iidlist|rotate|filters|crop|faces', row['action'], re.IGNORECASE) and not re.search('picasa|encoding|album|contacts', row['header'], re.IGNORECASE) and not re.search('originals', row['file'], re.IGNORECASE):
+		print row['header'], row['action']
+		#print "Shouldn't be here"
+		
+		
